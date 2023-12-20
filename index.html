@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Resize, Sketch, and Modify Images</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pica/5.1.1/pica.min.js"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 50px;
+    }
+    canvas {
+      border: 1px solid #333;
+      margin-top: 20px;
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Resize, Sketch, and Modify Images</h1>
+  
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <input type="file" id="fileInput" class="form-control" multiple>
+      </div>
+    </div>
+    
+    <div id="inputsContainer">
+      <!-- Dynamic dimension and name inputs will be added here -->
+    </div>
+    
+    <div class="row justify-content-center mt-3">
+      <div class="col-md-4">
+        <select id="quality" class="form-control">
+          <option value="standard">Standard</option>
+          <option value="hd">HD</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="sketch">Generate Sketch?</label>
+        <input type="checkbox" id="sketch">
+      </div>
+      <div class="col-md-4">
+        <button onclick="processImages()" class="btn btn-primary btn-block">Enhance and Convert All</button>
+      </div>
+    </div>
+
+    <div class="row justify-content-center mt-3">
+      <div class="col-md-12">
+        <canvas id="outputCanvas"></canvas>
+      </div>
+    </div>
+    
+    <div class="row justify-content-center mt-4">
+      <div class="col-md-4">
+        <label for="borderShape">Select Border Shape:</label>
+        <select id="borderShape" class="form-control">
+          <option value="square">Square</option>
+          <option value="round">Round</option>
+        </select>
+      </div>
+      <div class="col-md-4" id="roundBorderInput" style="display: none;">
+        <input type="number" id="borderRadius" class="form-control" placeholder="Border Radius">
+      </div>
+    </div>
+
+    <div class="row justify-content-center mt-4">
+      <div class="col-md-12">
+        <input type="text" id="fileName" class="form-control" placeholder="Enter file names (comma-separated)">
+      </div>
+    </div>
+
+    <div class="row justify-content-center mt-4">
+      <div class="col-md-12">
+        <button onclick="downloadImages()" class="btn btn-success btn-block">Download All Modified Images</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function addInputs() {
+      const fileInput = document.getElementById('fileInput');
+      const inputsContainer = document.getElementById('inputsContainer');
+      const index = inputsContainer.children.length + 1;
+
+      const inputDiv = document.createElement('div');
+      inputDiv.classList.add('row', 'justify-content-center', 'mt-3');
+      inputDiv.innerHTML = `
+        <div class="col-md-3">
+          <input type="number" id="desiredWidth${index}" class="form-control" placeholder="Desired Width">
+        </div>
+        <div class="col-md-3">
+          <input type="number" id="desiredHeight${index}" class="form-control" placeholder="Desired Height">
+        </div>
+        <div class="col-md-6">
+          <input type="text" id="newFileName${index}" class="form-control" placeholder="Enter new file name">
+        </div>
+      `;
+      inputsContainer.appendChild(inputDiv);
+    }
+
+    function processImages() {
+      const fileInput = document.getElementById('fileInput');
+      const quality = document.getElementById('quality').value;
+      const sketch = document.getElementById('sketch').checked;
+      const borderShape = document.getElementById('borderShape').value;
+      const borderRadius = parseInt(document.getElementById('borderRadius').value, 10);
+
+      const dimensionInputs = document.getElementById('inputsContainer').querySelectorAll('input[type="number"]');
+      const nameInputs = document.getElementById('inputsContainer').querySelectorAll('input[type="text"]');
+      const files = fileInput.files;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+
+        reader.onload = async function (e) {
+          const img = new Image();
+          img.onload = async function () {
+            const canvas = document.createElement('canvas');
+            const index = i + 1;
+            const desiredWidth = parseInt(dimensionInputs[i * 2].value, 10);
+            const desiredHeight = parseInt(dimensionInputs[i * 2 + 1].value, 10);
+
+            if (!isNaN(desiredWidth) && !isNaN(desiredHeight) && desiredWidth > 0 && desiredHeight > 0) {
+              canvas.width = desiredWidth;
+              canvas.height = desiredHeight;
+
+              // Use pica.js for high-quality image resizing
+              const pica = window.pica();
+              await pica.resize(img, canvas, {
+                unsharpAmount: 80,
+                unsharpRadius: 0.6,
+                unsharpThreshold: 2
+              });
+
+              // Enhance image for HD quality
+              if (quality === 'hd') {
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const pixels = imageData.data;
+
+                for (let i = 0; i < pixels.length; i += 4) {
+                  pixels[i] = Math.min(255, pixels[i] * 1.2);         // Red
+                  pixels[i + 1] = Math.min(255, pixels[i + 1] * 1.2); // Green
+                  pixels[i + 2] = Math.min(255, pixels[i + 2] * 1.2); // Blue
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+              }
+
+              // Generate sketch effect without negative colors if selected
+              if (sketch) {
+                applySketchEffect(canvas);
+              }
+
+              // Apply border shape
+              if (borderShape === 'round' && !isNaN(borderRadius) && borderRadius > 0) {
+                applyRoundBorder(canvas, borderRadius);
+              }
+
+              // Display the modified images on the page
+              document.body.appendChild(canvas);
+
+              // Download the modified image
+              downloadImage(canvas, nameInputs[i].value || `modified_image_${index}`);
+            } else {
+              alert(`Please enter valid width and height for Image ${index}.`);
+            }
+          };
+          img.src = e.target.result;
+        };
+
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function applySketchEffect(canvas) {
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const pixels = imageData.data;
+
+      // Convert the image data to grayscale
+      const grayscaleData = new Uint8ClampedArray(canvas.width * canvas.height);
+      for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
+        const avg = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+        grayscaleData[j] = avg;
+      }
+
+      // Apply basic edge detection based on intensity threshold
+      const edgeThreshold = 100; // Adjust this threshold for edge detection sensitivity
+
+      for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
+        const edgeColor = grayscaleData[j] > edgeThreshold ? 255 : 0; // Apply threshold
+        pixels[i] = edgeColor; // Red
+        pixels[i + 1] = edgeColor; // Green
+        pixels[i + 2] = edgeColor; // Blue
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    function applyRoundBorder(canvas, radius) {
+      const ctx = canvas.getContext('2d');
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+    }
+
+    function downloadImage(canvas, fileName) {
+      const link = document.createElement('a');
+      const transparentCanvas = document.createElement('canvas');
+      transparentCanvas.width = canvas.width;
+      transparentCanvas.height = canvas.height;
+      const ctx = transparentCanvas.getContext('2d');
+      ctx.drawImage(canvas, 0, 0);
+
+      link.href = transparentCanvas.toDataURL('image/png');
+      link.download = `${fileName}.png`;
+      link.click();
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function() {
+      for (let i = 0; i < this.files.length; i++) {
+        addInputs();
+      }
+    });
+
+    document.getElementById('borderShape').addEventListener('change', function() {
+      const roundBorderInput = document.getElementById('roundBorderInput');
+      if (this.value === 'round') {
+        roundBorderInput.style.display = 'block';
+      } else {
+        roundBorderInput.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
