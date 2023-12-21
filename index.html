@@ -1,244 +1,277 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Resize, Sketch, and Modify Images</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pica/5.1.1/pica.min.js"></script>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding-top: 50px;
-    }
-    canvas {
-      border: 1px solid #333;
-      margin-top: 20px;
-      max-width: 100%;
-      height: auto;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Resize, Sketch, and Modify Images</h1>
-  
-    <div class="row justify-content-center">
-      <div class="col-md-6">
-        <input type="file" id="fileInput" class="form-control" multiple>
-      </div>
-    </div>
-    
-    <div id="inputsContainer">
-      <!-- Dynamic dimension and name inputs will be added here -->
-    </div>
-    
-    <div class="row justify-content-center mt-3">
-      <div class="col-md-4">
-        <select id="quality" class="form-control">
-          <option value="standard">Standard</option>
-          <option value="hd">HD</option>
-        </select>
-      </div>
-      <div class="col-md-4">
-        <label for="sketch">Generate Sketch?</label>
-        <input type="checkbox" id="sketch">
-      </div>
-      <div class="col-md-4">
-        <button onclick="processImages()" class="btn btn-primary btn-block">Enhance and Convert All</button>
-      </div>
-    </div>
+ <!DOCTYPE html>
+ <html lang="en">
+   <head>
+     <meta charset="UTF-8">
+     <title>Image Toolkit</title>
+     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+     <style>
+       body {
+         font-family: Arial, sans-serif;
+         background-color: #f8f9fa;
+         color: #333;
+       }
 
-    <div class="row justify-content-center mt-3">
-      <div class="col-md-12">
-        <canvas id="outputCanvas"></canvas>
-      </div>
-    </div>
-    
-    <div class="row justify-content-center mt-4">
-      <div class="col-md-4">
-        <label for="borderShape">Select Border Shape:</label>
-        <select id="borderShape" class="form-control">
-          <option value="square">Square</option>
-          <option value="round">Round</option>
-        </select>
-      </div>
-      <div class="col-md-4" id="roundBorderInput" style="display: none;">
-        <input type="number" id="borderRadius" class="form-control" placeholder="Border Radius">
-      </div>
-    </div>
+       .container {
+         margin-top: 50px;
+       }
 
-    <div class="row justify-content-center mt-4">
-      <div class="col-md-12">
-        <input type="text" id="fileName" class="form-control" placeholder="Enter file names (comma-separated)">
-      </div>
-    </div>
+       h2 {
+         margin-bottom: 20px;
+       }
 
-    <div class="row justify-content-center mt-4">
-      <div class="col-md-12">
-        <button onclick="downloadImages()" class="btn btn-success btn-block">Download All Modified Images</button>
-      </div>
-    </div>
-  </div>
+       .btn-primary,
+       .btn-success {
+         margin-top: 10px;
+       }
 
-  <script>
-    function addInputs() {
-      const fileInput = document.getElementById('fileInput');
-      const inputsContainer = document.getElementById('inputsContainer');
-      const index = inputsContainer.children.length + 1;
+       .input-section {
+         margin-bottom: 20px;
+       }
 
-      const inputDiv = document.createElement('div');
-      inputDiv.classList.add('row', 'justify-content-center', 'mt-3');
-      inputDiv.innerHTML = `
-        <div class="col-md-3">
-          <input type="number" id="desiredWidth${index}" class="form-control" placeholder="Desired Width">
-        </div>
-        <div class="col-md-3">
-          <input type="number" id="desiredHeight${index}" class="form-control" placeholder="Desired Height">
-        </div>
-        <div class="col-md-6">
-          <input type="text" id="newFileName${index}" class="form-control" placeholder="Enter new file name">
-        </div>
-      `;
-      inputsContainer.appendChild(inputDiv);
-    }
+       textarea,
+       input[type="file"] {
+         width: 100%;
+         margin-bottom: 10px;
+       }
 
-    function processImages() {
-      const fileInput = document.getElementById('fileInput');
-      const quality = document.getElementById('quality').value;
-      const sketch = document.getElementById('sketch').checked;
-      const borderShape = document.getElementById('borderShape').value;
-      const borderRadius = parseInt(document.getElementById('borderRadius').value, 10);
+       table {
+         width: 100%;
+         margin-bottom: 20px;
+       }
 
-      const dimensionInputs = document.getElementById('inputsContainer').querySelectorAll('input[type="number"]');
-      const nameInputs = document.getElementById('inputsContainer').querySelectorAll('input[type="text"]');
-      const files = fileInput.files;
+       table th,
+       table td {
+         text-align: center;
+       }
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const reader = new FileReader();
+       footer {
+         text-align: center;
+         margin-top: 50px;
+         font-size: 14px;
+         color: #666;
+       }
+     </style>
+   </head>
+   <body>
+     <div class="container">
+       <h2>Image Toolkit</h2>
+       <div class="input-section">
+         <h3>Upload Images and Set Dimensions</h3>
+         <label for="imageNames">Image Names (Comma-separated):</label>
+         <textarea id="imageNames" class="form-control" placeholder="Enter image names separated by commas"></textarea>
+         <input type="file" id="fileInput" multiple>
+         <label for="dimensions">Enter Dimensions (Comma-separated, e.g., 100x100,200x200):</label>
+         <textarea id="dimensions" class="form-control" placeholder="Enter dimensions separated by commas"></textarea>
+         <button class="btn btn-primary" onclick="addImages()">Add Images</button>
+       </div>
+       <hr>
+       <div class="input-section">
+         <h3>Uploaded Images with Dimensions</h3>
+         <table class="table table-bordered">
+           <thead>
+             <tr>
+               <th scope="col">Image Name</th>
+               <th scope="col">Dimensions</th>
+             </tr>
+           </thead>
+           <tbody id="uploadedImages"></tbody>
+         </table>
+         <button class="btn btn-success" onclick="generateZip()">Download Zip</button>
+       </div>
+       <div class="input-section">
+         <h3>Get Image Details</h3>
+         <input type="file" id="fileInput2" multiple>
+         <button class="btn btn-primary" onclick="getDetails()">Get Image Details</button>
+         <div class="card">
+           <div class="card-body">
+             <h5 class="card-title">Image Names</h5>
+             <p class="card-text" id="imageNames2">No images uploaded</p>
+             <button class="btn btn-secondary" onclick="copyNames()">Copy Names</button>
+           </div>
+         </div>
+         <div class="card mt-4">
+           <div class="card-body">
+             <h5 class="card-title">Image Dimensions</h5>
+             <p class="card-text" id="imageDimensions">No dimensions available</p>
+             <button class="btn btn-secondary" onclick="copyDimensions()">Copy Dimensions</button>
+           </div>
+         </div>
+       </div>
+       <div class="input-section">
+         <h3>Multiple Image Searches</h3>
+         <textarea id="inputNames" placeholder="Enter names separated by commas"></textarea>
+         <button class="btn btn-primary" onclick="searchImages()">Search Images</button>
+       </div>
+     </div>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+     <script>
+       let uploadedImages = {};
 
-        reader.onload = async function (e) {
-          const img = new Image();
-          img.onload = async function () {
-            const canvas = document.createElement('canvas');
-            const index = i + 1;
-            const desiredWidth = parseInt(dimensionInputs[i * 2].value, 10);
-            const desiredHeight = parseInt(dimensionInputs[i * 2 + 1].value, 10);
+       function addImages() {
+         const imageNamesInput = document.getElementById('imageNames').value.trim();
+         const dimensionsInput = document.getElementById('dimensions').value.trim();
+         const imageNames = imageNamesInput.split(',').map(name => name.trim());
+         const dimensions = dimensionsInput.split(',').map(dimension => dimension.trim());
+         if (imageNames.length !== dimensions.length) {
+           alert('Number of image names and dimensions should be the same.');
+           return;
+         }
+         const fileInput = document.getElementById('fileInput');
+         const files = fileInput.files;
+         if (!files || files.length !== imageNames.length) {
+           alert('Please upload the correct number of images.');
+           return;
+         }
+         for (let i = 0; i < files.length; i++) {
+           const file = files[i];
+           const imageName = imageNames[i];
+           const dimension = dimensions[i];
+           if (!uploadedImages[imageName]) {
+             uploadedImages[imageName] = {
+               file,
+               dimension
+             };
+             const uploadedImagesTable = document.getElementById('uploadedImages');
+             const row = uploadedImagesTable.insertRow();
+             const nameCell = row.insertCell(0);
+             const dimensionCell = row.insertCell(1);
+             nameCell.textContent = imageName;
+             dimensionCell.textContent = dimension;
+           } else {
+             alert('Image name already exists. Please choose a different name.');
+           }
+         }
+       }
 
-            if (!isNaN(desiredWidth) && !isNaN(desiredHeight) && desiredWidth > 0 && desiredHeight > 0) {
-              canvas.width = desiredWidth;
-              canvas.height = desiredHeight;
+       function generateZip() {
+         const zip = new JSZip();
+         const promises = [];
+         for (const imageName in uploadedImages) {
+           const {
+             file,
+             dimension
+           } = uploadedImages[imageName];
+           const img = new Image();
+           img.src = URL.createObjectURL(file);
+           const [width, height] = dimension.split('x').map(Number);
+           const promise = new Promise((resolve) => {
+             img.onload = function() {
+               const canvas = document.createElement('canvas');
+               const ctx = canvas.getContext('2d');
+               canvas.width = width;
+               canvas.height = height;
+               ctx.drawImage(img, 0, 0, width, height);
+               canvas.toBlob(function(blob) {
+                 const fileName = imageName; // Use the full image name including dimensions
+                 zip.file(`${fileName}.png`, blob);
+                 resolve();
+               }, 'image/png');
+             };
+           });
+           promises.push(promise);
+         }
+         Promise.all(promises).then(() => {
+           zip.generateAsync({
+             type: 'blob'
+           }).then(function(content) {
+             const downloadLink = document.createElement('a');
+             downloadLink.href = URL.createObjectURL(content);
+             downloadLink.download = 'resized_images.zip';
+             document.body.appendChild(downloadLink);
+             downloadLink.click();
+             document.body.removeChild(downloadLink);
+           });
+         });
+       }
 
-              // Use pica.js for high-quality image resizing
-              const pica = window.pica();
-              await pica.resize(img, canvas, {
-                unsharpAmount: 80,
-                unsharpRadius: 0.6,
-                unsharpThreshold: 2
-              });
+       function getDetails() {
+         const fileInput = document.getElementById('fileInput2');
+         const imageNamesContainer = document.getElementById('imageNames2');
+         const imageDimensionsContainer = document.getElementById('imageDimensions');
+         if ('files' in fileInput && fileInput.files.length > 0) {
+           const names = [];
+           const dimensions = [];
+           Array.from(fileInput.files).forEach(file => {
+             const reader = new FileReader();
+             reader.onload = function() {
+               const img = new Image();
+               img.src = reader.result;
+               img.onload = function() {
+                 const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, ''); // Remove file extension
+                 names.push(nameWithoutExtension);
+                 dimensions.push(`${img.width}x${img.height}`);
+                 if (names.length === fileInput.files.length) {
+                   displayDetails(names, dimensions);
+                 }
+               };
+             };
+             reader.readAsDataURL(file);
+           });
+         } else {
+           imageNamesContainer.textContent = 'No images uploaded';
+           imageDimensionsContainer.textContent = 'No dimensions available';
+         }
+       }
 
-              // Enhance image for HD quality
-              if (quality === 'hd') {
-                const ctx = canvas.getContext('2d');
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const pixels = imageData.data;
+       function displayDetails(names, dimensions) {
+         const imageNamesContainer = document.getElementById('imageNames2');
+         const imageDimensionsContainer = document.getElementById('imageDimensions');
+         const namesString = names.join(', ');
+         const dimensionsString = dimensions.join(', ');
+         imageNamesContainer.textContent = namesString;
+         imageDimensionsContainer.textContent = dimensionsString;
+       }
 
-                for (let i = 0; i < pixels.length; i += 4) {
-                  pixels[i] = Math.min(255, pixels[i] * 1.2);         // Red
-                  pixels[i + 1] = Math.min(255, pixels[i + 1] * 1.2); // Green
-                  pixels[i + 2] = Math.min(255, pixels[i + 2] * 1.2); // Blue
-                }
+       function copyNames() {
+         const imageNamesContainer = document.getElementById('imageNames2');
+         const namesText = imageNamesContainer.textContent;
+         if (namesText) {
+           const tempTextArea = document.createElement('textarea');
+           tempTextArea.value = namesText;
+           document.body.appendChild(tempTextArea);
+           tempTextArea.select();
+           document.execCommand('copy');
+           document.body.removeChild(tempTextArea);
+           alert('Names copied to clipboard!');
+         }
+       }
 
-                ctx.putImageData(imageData, 0, 0);
-              }
+       function copyDimensions() {
+         const imageDimensionsContainer = document.getElementById('imageDimensions');
+         const dimensionsText = imageDimensionsContainer.textContent;
+         if (dimensionsText) {
+           const tempTextArea = document.createElement('textarea');
+           tempTextArea.value = dimensionsText;
+           document.body.appendChild(tempTextArea);
+           tempTextArea.select();
+           document.execCommand('copy');
+           document.body.removeChild(tempTextArea);
+           alert('Dimensions copied to clipboard!');
+         }
+       }
 
-              // Generate sketch effect without negative colors if selected
-              if (sketch) {
-                applySketchEffect(canvas);
-              }
+       function searchImages() {
+         const namesInput = document.getElementById('inputNames').value;
+         const namesArray = namesInput.split(',').map(name => name.trim());
+         const urls = namesArray.map(name => {
+           const baseUrl = 'https://www.google.com/search';
+           const queryParams = new URLSearchParams({
+             q: name,
+             tbm: 'isch'
+             // Add other parameters here if needed
+           });
+           return `${baseUrl}?${queryParams.toString()}`;
+         });
+         openInNewTabs(urls);
+       }
 
-              // Apply border shape
-              if (borderShape === 'round' && !isNaN(borderRadius) && borderRadius > 0) {
-                applyRoundBorder(canvas, borderRadius);
-              }
-
-              // Display the modified images on the page
-              document.body.appendChild(canvas);
-
-              // Download the modified image
-              downloadImage(canvas, nameInputs[i].value || `modified_image_${index}`);
-            } else {
-              alert(`Please enter valid width and height for Image ${index}.`);
-            }
-          };
-          img.src = e.target.result;
-        };
-
-        reader.readAsDataURL(file);
-      }
-    }
-
-    function applySketchEffect(canvas) {
-      const ctx = canvas.getContext('2d');
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const pixels = imageData.data;
-
-      // Convert the image data to grayscale
-      const grayscaleData = new Uint8ClampedArray(canvas.width * canvas.height);
-      for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
-        const avg = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
-        grayscaleData[j] = avg;
-      }
-
-      // Apply basic edge detection based on intensity threshold
-      const edgeThreshold = 100; // Adjust this threshold for edge detection sensitivity
-
-      for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
-        const edgeColor = grayscaleData[j] > edgeThreshold ? 255 : 0; // Apply threshold
-        pixels[i] = edgeColor; // Red
-        pixels[i + 1] = edgeColor; // Green
-        pixels[i + 2] = edgeColor; // Blue
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-    }
-
-    function applyRoundBorder(canvas, radius) {
-      const ctx = canvas.getContext('2d');
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-    }
-
-    function downloadImage(canvas, fileName) {
-      const link = document.createElement('a');
-      const transparentCanvas = document.createElement('canvas');
-      transparentCanvas.width = canvas.width;
-      transparentCanvas.height = canvas.height;
-      const ctx = transparentCanvas.getContext('2d');
-      ctx.drawImage(canvas, 0, 0);
-
-      link.href = transparentCanvas.toDataURL('image/png');
-      link.download = `${fileName}.png`;
-      link.click();
-    }
-
-    document.getElementById('fileInput').addEventListener('change', function() {
-      for (let i = 0; i < this.files.length; i++) {
-        addInputs();
-      }
-    });
-
-    document.getElementById('borderShape').addEventListener('change', function() {
-      const roundBorderInput = document.getElementById('roundBorderInput');
-      if (this.value === 'round') {
-        roundBorderInput.style.display = 'block';
-      } else {
-        roundBorderInput.style.display = 'none';
-      }
-    });
-  </script>
-</body>
-</html>
+       function openInNewTabs(urls) {
+         urls.forEach(url => {
+           window.open(url, '_blank');
+         });
+       }
+     </script>
+     </script>
+     <footer>Created by Nigam Patel @Creativebynigam. Email me on nigampatel498@gmail.com for website creation.</footer>
+   </body>
+ </html>
